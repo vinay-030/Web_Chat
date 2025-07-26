@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons (pin, theme) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        /* Custom styles for chat bubbles */
+        .message-bubble {
+            max-width: 70%;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+        }
+        .message-bubble.sent {
+            background-color: #3B82F6; /* blue-500 */
+            color: white;
+            border-bottom-right-radius: 0;
+        }
+        .message-bubble.received {
+            background-color: #E5E7EB; /* gray-200 */
+            color: #1F2937; /* gray-800 */
+            border-bottom-left-radius: 0;
+        }
+        /* Hide scrollbar for aesthetic purposes, but allow scrolling */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        /* Dark Mode Styles */
+        html[data-theme='dark'] {
+            background-color: #1a202c; /* dark gray background */
+            color: #e2e8f0; /* light gray text */
+        }
+
+        html[data-theme='dark'] .bg-white {
+            background-color: #2d3748; /* darker gray for cards */
+        }
+
+        html[data-theme='dark'] .text-gray-800 {
+            color: #e2e8f0;
+        }
+
+        html[data-theme='dark'] .text-gray-700 {
+            color: #cbd5e0;
+        }
+
+        html[data-theme='dark'] .text-gray-500 {
+            color: #a0aec0;
+        }
+
+        html[data-theme='dark'] .border-gray-300 {
+            border-color: #4a5568;
+        }
+
+        html[data-theme='dark'] input {
+            background-color: #4a5568;
+            color: #e2e8f0;
+        }
+
+        html[data-theme='dark'] input::placeholder {
+            color: #a0aec0;
+        }
+
+        html[data-theme='dark'] .bg-gray-50 {
+            background-color: #4a5568;
+        }
+
+        html[data-theme='dark'] .hover\:bg-blue-50:hover {
+            background-color: #2c5282; /* darker blue for hover */
+        }
+
+        html[data-theme='dark'] .message-bubble.received {
+            background-color: #4a5568; /* darker gray for received bubbles */
+            color: #e2e8f0;
+        }
+
+        html[data-theme='dark'] .bg-gray-300 {
+            background-color: #64748b; /* slate-500 */
+            color: #e2e8f0;
+        }
+
+        html[data-theme='dark'] .hover\:bg-gray-400:hover {
+            background-color: #475569; /* slate-700 */
+        }
+
+        /* Confirmation Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 10px 15px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        html[data-theme='dark'] .modal-content {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="bg-white rounded-xl shadow-lg w-full max-w-2xl h-[90vh] flex flex-col overflow-hidden">
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="flex-grow flex flex-col items-center justify-center p-8 space-y-6">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">Welcome to ChatBro</h2>
+            <div id="auth-error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md hidden w-full max-w-md" role="alert">
+                <span id="auth-error-message" class="block sm:inline"></span>
+            </div>
+            <form id="auth-form" class="w-full max-w-md space-y-4">
+                <div>
+                    <label for="auth-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="auth-email" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" placeholder="your@example.com" required>
+                </div>
+                <div id="username-field" class="hidden">
+                    <label for="auth-username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input type="text" id="auth-username" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" placeholder="Choose a username">
+                </div>
+                <div>
+                    <label for="auth-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="auth-password" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" placeholder="••••••••" required>
+                </div>
+                <button type="submit" id="auth-submit-btn" class="w-full bg-blue-600 text-white py-3 rounded-md font-semibold text-lg hover:bg-blue-700 transition duration-300 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Login</button>
+            </form>
+            <button id="toggle-auth-mode" class="text-blue-600 hover:underline text-sm">Need an account? Register</button>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div id="dashboard-screen" class="hidden flex-grow flex flex-col p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 id="welcome-message" class="text-2xl font-bold text-gray-800">Welcome, User</h2>
+                <div class="flex items-center space-x-4">
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-md hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-300">
+                        <i class="fas fa-sun text-lg" id="theme-icon"></i>
+                    </button>
+                    <button id="logout-btn" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition duration-300 shadow-md">Logout</button>
+                </div>
+            </div>
+            <div id="dashboard-error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md hidden mb-4" role="alert">
+                <span id="dashboard-error-message" class="block sm:inline"></span>
+            </div>
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Find Users to Chat</h3>
+            <input type="text" id="user-search-input" placeholder="Search users by username or email..." class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 mb-4">
+            <ul id="user-list" class="space-y-3 overflow-y-auto flex-grow hide-scrollbar">
+                <!-- User items will be injected here by JavaScript -->
+            </ul>
+            <div class="mt-4 p-4 bg-white rounded-xl shadow-lg text-sm text-gray-600 text-center">
+                Your User ID: <span id="current-user-id" class="font-mono text-blue-700 break-all"></span>
+            </div>
+            <button id="delete-account-btn" class="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition duration-300 shadow-md">Delete Account</button>
+        </div>
+
+        <!-- Chat Screen -->
+        <div id="chat-screen" class="hidden flex-grow flex flex-col">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-4 flex items-center justify-between">
+                <button id="back-to-users-btn" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition duration-300 shadow-md">
+                    &larr; Back to Users
+                </button>
+                <h2 id="chat-partner-name" class="text-2xl font-bold text-gray-800">Chat with User</h2>
+                <div class="flex items-center space-x-4">
+                    <button id="clear-chat-btn" class="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition duration-300 shadow-md">Clear Conversation</button>
+                </div>
+            </div>
+
+            <div id="chat-error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md hidden mb-4" role="alert">
+                <span id="chat-error-message" class="block sm:inline"></span>
+            </div>
+
+            <div class="flex-grow bg-white rounded-xl shadow-lg p-6 flex flex-col overflow-hidden">
+                <div id="messages-container" class="flex-grow overflow-y-auto space-y-4 p-2 hide-scrollbar">
+                    <!-- Messages will be injected here by JavaScript -->
+                </div>
+
+                <form id="message-form" class="mt-4 flex gap-2">
+                    <input type="text" id="message-input" placeholder="Type your message..." class="flex-grow px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200">
+                    <button type="submit" class="px-6 py-3 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal Structure -->
+    <div id="confirmation-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200" id="modal-title">Confirm Action</h3>
+            <p class="mb-6 text-gray-700 dark:text-gray-300" id="modal-message">Are you sure you want to proceed?</p>
+            <div class="flex justify-center space-x-4">
+                <button id="modal-cancel-btn" class="px-6 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition duration-300">Cancel</button>
+                <button id="modal-confirm-btn" class="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition duration-300">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Socket.IO Client Library -->
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const BACKEND_URL = 'http://127.0.0.1:5000'; // Your Flask backend URL
+
+        // DOM Elements
+        const htmlElement = document.documentElement; // For theme management
+        const appDiv = document.getElementById('app');
+        const authScreen = document.getElementById('auth-screen');
+        const dashboardScreen = document.getElementById('dashboard-screen');
+        const chatScreen = document.getElementById('chat-screen');
+
+        const authForm = document.getElementById('auth-form');
+        const authEmailInput = document.getElementById('auth-email');
+        const authPasswordInput = document.getElementById('auth-password');
+        const authUsernameField = document.getElementById('username-field');
+        const authUsernameInput = document.getElementById('auth-username');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
+        const toggleAuthModeBtn = document.getElementById('toggle-auth-mode');
+        const authErrorDiv = document.getElementById('auth-error');
+        const authErrorMessage = document.getElementById('auth-error-message');
+
+        const welcomeMessage = document.getElementById('welcome-message');
+        const logoutBtn = document.getElementById('logout-btn');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const userSearchInput = document.getElementById('user-search-input');
+        const userList = document.getElementById('user-list');
+        const currentUserIdSpan = document.getElementById('current-user-id');
+        const dashboardErrorDiv = document.getElementById('dashboard-error');
+        const dashboardErrorMessage = document.getElementById('dashboard-error-message');
+        const deleteAccountBtn = document.getElementById('delete-account-btn');
+
+        const backToUsersBtn = document.getElementById('back-to-users-btn');
+        const chatPartnerName = document.getElementById('chat-partner-name');
+        const messagesContainer = document.getElementById('messages-container');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const clearChatBtn = document.getElementById('clear-chat-btn');
+        const chatErrorDiv = document.getElementById('chat-error');
+        const chatErrorMessage = document.getElementById('chat-error-message');
+
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+
+
+        // State variables
+        let isRegistering = false;
+        let currentUser = null; // { id, username, email }
+        let allUsers = [];
+        let selectedChatPartner = null;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        let pinnedChatId = localStorage.getItem('pinnedChatId') || null;
+
+        // Socket.IO connection
+        const socket = io(BACKEND_URL);
+
+        // --- Utility Functions ---
+        function showScreen(screen) {
+            authScreen.classList.add('hidden');
+            dashboardScreen.classList.add('hidden');
+            chatScreen.classList.add('hidden');
+            screen.classList.remove('hidden');
+        }
+
+        function displayAuthError(message) {
+            authErrorMessage.textContent = message;
+            authErrorDiv.classList.remove('hidden');
+        }
+
+        function hideAuthError() {
+            authErrorDiv.classList.add('hidden');
+        }
+
+        function displayDashboardError(message) {
+            dashboardErrorMessage.textContent = message;
+            dashboardErrorDiv.classList.remove('hidden');
+        }
+
+        function hideDashboardError() {
+            dashboardErrorDiv.classList.add('hidden');
+        }
+
+        function displayChatError(message) {
+            chatErrorMessage.textContent = message;
+            chatErrorDiv.classList.remove('hidden');
+        }
+
+        function hideChatError() {
+            chatErrorDiv.classList.add('hidden');
+        }
+
+        function getChatId(userId1, userId2) {
+            const sortedUids = [userId1, userId2].sort();
+            return `chat_${sortedUids[0]}_${sortedUids[1]}`;
+        }
+
+        function scrollToBottom(element) {
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function setAppTheme(theme) {
+            htmlElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            themeIcon.className = theme === 'dark' ? 'fas fa-moon text-lg' : 'fas fa-sun text-lg';
+        }
+
+        function showConfirmationModal(title, message, onConfirm) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            confirmationModal.classList.remove('hidden');
+
+            const confirmHandler = () => {
+                onConfirm();
+                hideConfirmationModal();
+            };
+
+            modalConfirmBtn.addEventListener('click', confirmHandler, { once: true });
+            modalCancelBtn.addEventListener('click', hideConfirmationModal, { once: true });
+        }
+
+        function hideConfirmationModal() {
+            confirmationModal.classList.add('hidden');
+            // Remove event listeners to prevent multiple bindings
+            modalConfirmBtn.removeEventListener('click', modalConfirmBtn.confirmHandler);
+            modalCancelBtn.removeEventListener('click', hideConfirmationModal);
+        }
+
+        // --- Theme Toggle ---
+        themeToggleBtn.addEventListener('click', () => {
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            setAppTheme(newTheme);
+            currentTheme = newTheme;
+        });
+
+        // --- Authentication Logic ---
+        toggleAuthModeBtn.addEventListener('click', () => {
+            isRegistering = !isRegistering;
+            authSubmitBtn.textContent = isRegistering ? 'Register' : 'Login';
+            toggleAuthModeBtn.textContent = isRegistering ? 'Already have an account? Login' : 'Need an account? Register';
+            if (isRegistering) {
+                authUsernameField.classList.remove('hidden');
+                authUsernameInput.setAttribute('required', 'true');
+            } else {
+                authUsernameField.classList.add('hidden');
+                authUsernameInput.removeAttribute('required');
+            }
+            hideAuthError();
+            authEmailInput.value = '';
+            authPasswordInput.value = '';
+            authUsernameInput.value = '';
+        });
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideAuthError();
+
+            const email = authEmailInput.value;
+            const password = authPasswordInput.value;
+            const username = authUsernameInput.value;
+
+            const url = isRegistering ? `${BACKEND_URL}/register` : `${BACKEND_URL}/login`;
+            const payload = isRegistering ? { username, email, password } : { email, password };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('userId', data.userId);
+                    localStorage.setItem('username', data.username || username);
+                    currentUser = { id: data.userId, username: data.username || username, email: email };
+                    loadDashboard();
+                } else {
+                    displayAuthError(data.message || 'Authentication failed.');
+                }
+            } catch (err) {
+                console.error('Auth error:', err);
+                displayAuthError('Network error or server unavailable.');
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('userId');
+            localStorage.removeItem('username');
+            localStorage.removeItem('pinnedChatId'); // Clear pinned chat on logout
+            currentUser = null;
+            selectedChatPartner = null;
+            showScreen(authScreen);
+            hideDashboardError();
+            hideChatError();
+            if (socket.connected) {
+                socket.disconnect();
+            }
+        });
+
+        // --- Dashboard Logic ---
+        async function loadDashboard() {
+            showScreen(dashboardScreen);
+            hideDashboardError();
+            welcomeMessage.textContent = `Welcome, ${currentUser.username || currentUser.email}`;
+            currentUserIdSpan.textContent = currentUser.id;
+            userList.innerHTML = ''; // Clear previous users
+
+            if (!socket.connected) {
+                socket.connect();
+            }
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/users?currentUserId=${currentUser.id}`);
+                const usersData = await response.json();
+
+                if (response.ok) {
+                    allUsers = usersData;
+                    renderUserList(allUsers);
+                } else {
+                    displayDashboardError(usersData.message || 'Failed to load users.');
+                }
+            } catch (err) {
+                console.error('Fetch users error:', err);
+                displayDashboardError('Network error or server unavailable.');
+            }
+        }
+
+        function renderUserList(usersToRender) {
+            userList.innerHTML = '';
+
+            // Separate pinned user
+            let pinnedUser = null;
+            let otherUsers = [];
+
+            if (pinnedChatId && currentUser) {
+                const parts = pinnedChatId.split('_');
+                const partnerId = parts[1] === currentUser.id ? parts[2] : parts[1];
+                pinnedUser = usersToRender.find(user => user.id === partnerId);
+                otherUsers = usersToRender.filter(user => user.id !== partnerId);
+            } else {
+                otherUsers = usersToRender;
+            }
+
+            const sortedUsers = [];
+            if (pinnedUser) {
+                sortedUsers.push(pinnedUser);
+            }
+            sortedUsers.push(...otherUsers.sort((a, b) => a.username.localeCompare(b.username))); // Sort others alphabetically
+
+            if (sortedUsers.length === 0) {
+                userList.innerHTML = '<li class="text-center text-gray-500 py-8">No other users found.</li>';
+                return;
+            }
+
+            sortedUsers.forEach(user => {
+                const li = document.createElement('li');
+                const isPinned = pinnedChatId && getChatId(currentUser.id, user.id) === pinnedChatId;
+                li.className = `p-4 bg-gray-50 rounded-lg shadow-sm hover:bg-blue-50 cursor-pointer flex items-center justify-between transition duration-200 ${isPinned ? 'border-2 border-blue-500' : ''}`; // Highlight pinned
+                li.innerHTML = `
+                    <div class="flex-grow" data-user-id="${user.id}">
+                        <p class="font-medium text-gray-900">${user.username}</p>
+                        <p class="text-sm text-gray-500">${user.email}</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button class="pin-toggle-btn text-gray-400 hover:text-blue-500 transition duration-200" data-user-id="${user.id}">
+                            <i class="${isPinned ? 'fas fa-thumbtack text-blue-500' : 'fas fa-thumbtack'}"></i>
+                        </button>
+                        <button class="chat-btn px-3 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 transition duration-300">
+                            Chat
+                        </button>
+                    </div>
+                `;
+                li.querySelector('.chat-btn').addEventListener('click', () => {
+                    selectedChatPartner = user;
+                    loadChatWindow();
+                });
+                li.querySelector('.pin-toggle-btn').addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent li click
+                    togglePinChat(user.id);
+                });
+                userList.appendChild(li);
+            });
+        }
+
+        function togglePinChat(partnerId) {
+            const chatToPin = getChatId(currentUser.id, partnerId);
+            if (pinnedChatId === chatToPin) {
+                // Unpin
+                pinnedChatId = null;
+                localStorage.removeItem('pinnedChatId');
+            } else {
+                // Pin
+                pinnedChatId = chatToPin;
+                localStorage.setItem('pinnedChatId', pinnedChatId);
+            }
+            renderUserList(allUsers); // Re-render to reflect pin status
+        }
+
+
+        userSearchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredUsers = allUsers.filter(user =>
+                user.username.toLowerCase().includes(searchTerm) ||
+                user.email.toLowerCase().includes(searchTerm)
+            );
+            renderUserList(filteredUsers);
+        });
+
+        deleteAccountBtn.addEventListener('click', () => {
+            showConfirmationModal(
+                'Delete Account',
+                'Are you sure you want to permanently delete your account? This action cannot be undone.',
+                async () => {
+                    try {
+                        const response = await fetch(`${BACKEND_URL}/delete_account`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: currentUser.id })
+                        });
+                        const data = await response.json();
+
+                        if (response.ok) {
+                            alert('Account deleted successfully. You will now be logged out.'); // Using alert for final confirmation
+                            logoutBtn.click(); // Simulate logout
+                        } else {
+                            displayDashboardError(data.message || 'Failed to delete account.');
+                        }
+                    } catch (err) {
+                        console.error('Delete account error:', err);
+                        displayDashboardError('Network error or server unavailable.');
+                    }
+                }
+            );
+        });
+
+        // --- Chat Logic ---
+        function loadChatWindow() {
+            showScreen(chatScreen);
+            hideChatError();
+            chatPartnerName.textContent = `Chat with ${selectedChatPartner.username}`;
+            messagesContainer.innerHTML = ''; // Clear previous messages
+
+            // Emit 'join_chat' event to the backend
+            socket.emit('join_chat', {
+                userId: currentUser.id,
+                chatPartnerId: selectedChatPartner.id
+            });
+        }
+
+        backToUsersBtn.addEventListener('click', () => {
+            // Emit 'leave_chat' event to the backend
+            socket.emit('leave_chat', {
+                userId: currentUser.id,
+                chatPartnerId: selectedChatPartner.id
+            });
+            selectedChatPartner = null;
+            loadDashboard();
+        });
+
+        messageForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            hideChatError();
+            const messageText = messageInput.value.trim();
+            if (messageText === '') return;
+
+            if (currentUser && selectedChatPartner) {
+                socket.emit('send_message', {
+                    senderId: currentUser.id,
+                    senderUsername: currentUser.username,
+                    receiverId: selectedChatPartner.id,
+                    messageText: messageText
+                });
+                messageInput.value = ''; // Clear input
+            } else {
+                displayChatError('Cannot send message. Please log in and select a chat partner.');
+            }
+        });
+
+        clearChatBtn.addEventListener('click', () => {
+            showConfirmationModal(
+                'Clear Conversation',
+                'Are you sure you want to clear this conversation? This action cannot be undone.',
+                () => {
+                    if (currentUser && selectedChatPartner) {
+                        socket.emit('clear_chat', {
+                            userId1: currentUser.id,
+                            userId2: selectedChatPartner.id
+                        });
+                    } else {
+                        displayChatError('Cannot clear chat. No active chat selected.');
+                    }
+                }
+            );
+        });
+
+
+        function addMessageToChat(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${message.senderId === currentUser.id ? 'justify-end' : 'justify-start'}`;
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = `message-bubble ${message.senderId === currentUser.id ? 'sent' : 'received'}`;
+
+            const senderName = document.createElement('p');
+            senderName.className = 'font-semibold text-sm mb-1';
+            senderName.textContent = message.senderId === currentUser.id ? 'You' : message.senderUsername;
+
+            const messageTextP = document.createElement('p');
+            messageTextP.className = 'text-base';
+            messageTextP.textContent = message.messageText;
+
+            const timestampP = document.createElement('p');
+            timestampP.className = 'text-xs opacity-75 mt-1 text-right';
+            const date = new Date(message.timestamp);
+            timestampP.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            bubbleDiv.appendChild(senderName);
+            bubbleDiv.appendChild(messageTextP);
+            bubbleDiv.appendChild(timestampP);
+            messageDiv.appendChild(bubbleDiv);
+            messagesContainer.appendChild(messageDiv);
+            scrollToBottom(messagesContainer);
+        }
+
+        // --- Socket.IO Event Listeners ---
+        socket.on('connect', () => {
+            console.log('Connected to Socket.IO server');
+            // If user is already logged in and on chat screen, ensure they rejoin chat room
+            if (currentUser && selectedChatPartner && !chatScreen.classList.contains('hidden')) {
+                socket.emit('join_chat', {
+                    userId: currentUser.id,
+                    chatPartnerId: selectedChatPartner.id
+                });
+            }
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from Socket.IO server');
+            // Optionally show a message to the user
+        });
+
+        socket.on('receive_message', (message) => {
+            // Only add message if it belongs to the currently active chat
+            const currentChatId = currentUser && selectedChatPartner ? getChatId(currentUser.id, selectedChatPartner.id) : null;
+            const messageChatId = getChatId(message.senderId, message.receiverId);
+
+            if (currentChatId === messageChatId) {
+                addMessageToChat(message);
+            }
+        });
+
+        socket.on('load_messages', (messages) => {
+            messagesContainer.innerHTML = ''; // Clear existing messages before loading history
+            messages.forEach(msg => addMessageToChat(msg));
+            scrollToBottom(messagesContainer);
+        });
+
+        socket.on('chat_cleared', () => {
+            messagesContainer.innerHTML = '<div class="text-center text-gray-500 py-8">Conversation cleared.</div>';
+            scrollToBottom(messagesContainer);
+        });
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setAppTheme(currentTheme); // Apply theme on load
+
+            const storedUserId = localStorage.getItem('userId');
+            const storedUsername = localStorage.getItem('username');
+            const storedEmail = localStorage.getItem('email');
+
+            if (storedUserId && storedUsername) {
+                currentUser = { id: storedUserId, username: storedUsername, email: storedEmail || 'N/A' };
+                loadDashboard();
+            } else {
+                showScreen(authScreen);
+            }
+        });
+    </script>
+</body>
+</html>
